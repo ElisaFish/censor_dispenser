@@ -5,74 +5,63 @@ email_three = open("email_three.txt", "r").read()
 email_four = open("email_four.txt", "r").read()
 
 import string
+import re
 
-#def create_mask(term):
-#    mask = ""
-#    for i in range[0,len(term)]:
-#        mask += 'X'
-#    return mask
+char_censor = '*'
 
+# Censor single word, every instance in text.
+# Accounts for spaces, punctuation, and case.
 def censor(term, text):
-    #term_mask = 'X' * len(term)
     new_text = text
-    #new_text = new_text.replace(string, "REDACTED")
-    #whitespace_punctuation = [' ']
-    #whitespace_punctuation.append(string.whitespace)
-    #for c in string.punctuation:
-    #    whitespace_punctuation.append(str(c))
-    #translation = []
-    #for prefix in whitespace_punctuation:
-    #    for suffix in whitespace_punctuation:
-    #        key = prefix + term + suffix
-    #        value = prefix + term_mask + suffix
-    #        translation.append(text.maketrans(key, value))
-            #translation[key] = value
-    #print(translation)
-    #new_text = text.translate(translation)
 
-    new_text = new_text.replace(' ' + term + ' ', ' ' + 'X' * len(term) + ' ')
-    new_text = new_text.replace(term.capitalize() + ' ', 'X' * len(term) + ' ')
-    new_text = new_text.replace(' ' + term + "s ", ' ' + 'X' * len(term) + 's ')
-    new_text = new_text.replace(' ' + term + "s.", ' ' + 'X' * len(term) + "s.")
-    new_text = new_text.replace(term.capitalize() + "s ", 'X' * len(term) + "s ")
-    new_text = new_text.replace(" " + term + ".", ' ' + 'X' * len(term) + '.')
-    new_text = new_text.replace(" " + term + ",", ' ' + 'X' * len(term) + ',')
-    new_text = new_text.replace(" " + term.capitalize() + ",", ' ' + 'X' * len(term) + ',')
-    new_text = new_text.replace(term.capitalize() + ",", 'X' * len(term) + ',')
-    new_text = new_text.replace(" " + term + "!", ' ' + 'X' * len(term) + '!')
-    new_text = new_text.replace(" " + term + "?", ' ' + 'X' * len(term) + '?')
-    new_text = new_text.replace("(" + term, "(" + 'X' * len(term))
+    whitespace_punctuation = []
+    for char in (string.whitespace + string.punctuation):
+        whitespace_punctuation.append(char)
+    plurals = []
+    for char in whitespace_punctuation:
+        plurals.append('s' + char)
+    
+    suffices = whitespace_punctuation + plurals
+
+    translation = []
+    for prefix in whitespace_punctuation:
+        for suffix in (suffices):
+            value = prefix + (char_censor * len(term)) + suffix
+            key = prefix + term + suffix
+            translation.append([key, value])
+            key = prefix + term.capitalize() + suffix
+            translation.append([key, value])
+            key = prefix + term.upper() + suffix
+            translation.append([key, value])
+
+    for key, value in translation:
+        new_text = new_text.replace(key, value)
+    
     return new_text
-    #return text.translate(translation)
 
-#def new_censor(term, text):
 
 email_one_redacted = censor('learning algorithms', email_one)
 print(email_one_redacted)
 
 proprietary_terms = ["she", "personality matrix", "sense of self", "self-preservation", "learning algorithm", "her", "herself"]
 
+# Censors a list of terms
 def censor_list(term_list, text):
     new_text = text
-    #dictionary = {}
-    #translation = []
+
     for term in term_list:
-        #dictionary[term] = "X" * len(term)
-        #translation.append(text.maketrans(term, 'X' * len(term)))
         new_text = censor(term, new_text)
-        #new_text = censor(term.capitalize(), new_text)
-    #print(translation)
+
     return new_text
-    #return text.translate(dictionary)
-    #return text.translate(translation)
+
 
 email_two_redacted = censor_list(proprietary_terms, email_two)
 print(email_two_redacted)
 
 negative_words = ["concerned", "behind", "danger", "dangerous", "alarming", "alarmed", "out of control", "help", "unhappy", "bad", "upset", "awful", "broken", "damage", "damaging", "dismal", "distressed", "distressed", "concerning", "horrible", "horribly", "questionable"]
 
+# Censors all but the first occurance of a negative word, and a list of terms
 def censor_negative(term_list, text):
-    #found_negative = False
     new_text = text
     neg_indices = []
     for term in negative_words:
@@ -83,69 +72,50 @@ def censor_negative(term_list, text):
         neg_indices.sort()
         first_neg = neg_indices[0][1]
         new_text = censor_list(negative_words, text)
-        new_text = new_text.replace('X' * len(first_neg), first_neg, 1)
-    
-    ###### Iterate through text ######
-    #for word in text:
-    #    if word in negative_words:
-    #       if found_negative:
-    #            new_text = text.replace(word.lower(), 'X' * len(word), 1)
-    #       elif word in negative_words and not found_negative:
-    #        found_negative = True
+        new_text = new_text.replace(char_censor * len(first_neg), first_neg, 1)
 
     return censor_list(term_list, new_text)
 
-#print(email_three)
+
 print(censor_negative(proprietary_terms, email_three))
 
+# Censors all words in a list, and the words that come before and after the censored term
 def censor_surrounding(term_list, text):
     censor_terms = term_list + negative_words
 
-    # Attempt 2
-    for term in censor_terms:
-        new_text = text
-        index = 0
-        end = len(text)
-        index = text.find(term, index, end)
-        while index != -1:
-            # Censor word
-            new_text = new_text.replace(term, 'X' * len(term), 1)
+    # Using previous functions
+    new_text = censor_list(censor_terms, text)
+    index = 0
+    end = len(text)
+    index = new_text.find(char_censor, index, end)
+    while index != -1:
+        #Censor word before
+        match = re.findall("\s", new_text[:index-1])
+        if match:
+            whitespace = match[-1]
+        else:
+            whitespace = ' '
+        before = new_text.rfind(whitespace, 0, index-1)
+        word_before = new_text[before+1: index-1]
+        new_text = new_text[:before+1] + (char_censor * len(word_before)) + new_text[index-1:]
 
-            #Censor word before
-            before = new_text.rfind(string.whitespace, 0, index-1)
-            word_before = new_text[before+1: index-2]
-            new_text = new_text[:before] + 'X' * len(word_before) + new_text[index-1:]
-            #new_text.replace(word_before, 'X' * len(word_before), before, index)
+        # Censor word after
+        match = re.findall("\s", new_text[index:])
+        if match:
+            whitespace = match[0]
+            whitespace_after = match[1]
+        else:
+            whitespace = ' '
+            whitespace_after = ' '
 
-            # Censor word after
-            after = new_text.find(string.whitespace, index+len(term)+2, end)
-            new_text = new_text[:index+len(term) + 1] + 'X' * (after - (index+len(term)+2)) + new_text[after:]
+        eow = new_text.find(whitespace, index, end)
+        after = new_text.find(whitespace_after, eow+1, end)
+        new_text = new_text[:(eow + 1)] + (char_censor * (after - (eow+1))) + new_text[after:]
 
-            # Find word
-            index = text.find(term, index, end)
-
+        # Find word
+        index = new_text.find(char_censor, after, end)
+    
     return new_text
 
 print(censor_surrounding(proprietary_terms, email_four))
-        
-    #new_text = censor_negative(, email_four)
-    
-    #for i in range(0, len(split_text)):
-    #    if (split_text[i] in term_list) or (split_text[i] in negative_words):
-    #        split_text[i-1] = 'X' * len(split_text[i-1])
-    #        split_text[i] = 'X' * len(split_text[i])
-    #        split_text[i+1] = 'X' * len(split_text[i+1])
-
-    #split_text = text.split(' ')
-    #for counter, word in list(enumerate(split_text(' '))):
-    #    if (word.lower() in term_list) or (word.lower() in negative_words):
-    #        split_text[counter-1] = split_text[counter-1].replace(split_text[counter-1], 'X' * len(split_text[counter-1]))
-    #        split_text[counter] = split_text[counter].replace(split_text[counter], 'X' * len(split_text[counter]))
-    #        split_text[counter+1] = split_text[counter+1].replace(split_text[counter+1], 'X' * len(split_text[counter+1]))
-    
-    #combined_text = ' '.join(split_text)
-    #return combined_text
-
-    #four_censored = censor_surrounding(proprietary_terms, email_four)
-    #print(four_censored)
 
